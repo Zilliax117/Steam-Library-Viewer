@@ -28,6 +28,7 @@ function xmlVal(xml, tag) {
 function parseGamesXml(xml) {
   const games = [];
   const gameBlocks = xml.split('<game>').slice(1);
+  console.log('parseGamesXml: found', gameBlocks.length, 'game blocks');
   for (const block of gameBlocks) {
     const appid = xmlVal(block, 'appID');
     const name = xmlVal(block, 'name');
@@ -43,8 +44,11 @@ function parseGamesXml(xml) {
           ? `https://media.steampowered.com/steamcommunity/public/images/apps/${appid}/${logo}.jpg`
           : null,
       });
+    } else {
+      console.log('Skipped game block - appid:', appid, 'name:', name);
     }
   }
+  console.log('parseGamesXml: parsed', games.length, 'games');
   return games;
 }
 
@@ -83,9 +87,15 @@ async function fetchViaCommunity(steamId) {
   const profileXml = await profileRes.text();
   const gamesXml = await gamesRes.text();
 
+  // Debug: log response status and sample
+  console.log('Profile status:', profileRes.status);
+  console.log('Games status:', gamesRes.status, 'length:', gamesXml.length);
+  console.log('Games XML preview:', gamesXml.substring(0, 500));
+
   if (gamesXml.includes('<error>')) {
     const errMsg = xmlVal(gamesXml, 'error') || '未知错误';
-    if (errMsg.includes('not be retrieved') || errMsg.includes('private')) {
+    console.log('Games XML error:', errMsg);
+    if (errMsg.includes('not be retrieved') || errMsg.includes('private') || errMsg.includes('friends')) {
       return { error: '该用户的游戏详情为私密，请在 Steam 隐私设置中设为公开' };
     }
     return { error: errMsg };
@@ -107,6 +117,11 @@ async function fetchViaCommunity(steamId) {
     total_games: games.length,
     total_playtime_hours: parseFloat((games.reduce((s, g) => s + g.playtime_minutes, 0) / 60).toFixed(1)),
     games,
+    _debug: {
+      source: 'community',
+      gamesXmlLen: gamesXml.length,
+      xmlPreview: gamesXml.substring(0, 400),
+    },
   };
 }
 
