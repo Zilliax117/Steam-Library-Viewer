@@ -301,9 +301,14 @@ app.get('/api/debug/html/:identifier', async (req, res) => {
     headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
   });
   const html = await r.text();
-  // Extract just the game row divs
-  const rows = html.match(/<div[^>]*class="[^"]*gameListRow[^"]*"[^>]*id="game_\d+"[^>]*>/gi) || [];
-  res.json({ rowCount: rows.length, rows });
+  // Find Limbus Company
+  const limbusIdx = html.indexOf('Limbus');
+  const limbusContext = limbusIdx > 0 ? html.substring(limbusIdx - 200, limbusIdx + 500) : 'NOT FOUND';
+  res.json({
+    htmlLen: html.length,
+    hasGameListRow: html.includes('gameListRow'),
+    limbusContext,
+  });
 });
 
 app.get('/api/health', async (req, res) => {
