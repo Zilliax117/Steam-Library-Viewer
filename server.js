@@ -81,7 +81,7 @@ async function resolveViaCommunity(input) {
 async function fetchViaCommunity(steamId) {
   const [profileRes, gamesRes] = await Promise.all([
     fetch(`https://steamcommunity.com/profiles/${steamId}/?xml=1`, { timeout: 8000 }),
-    fetch(`https://steamcommunity.com/profiles/${steamId}/games/?tab=all&xml=1`, { timeout: 8000 }),
+    fetch(`https://steamcommunity.com/profiles/${steamId}/games?tab=all&xml=1`, { timeout: 8000 }),
   ]);
 
   const profileXml = await profileRes.text();
