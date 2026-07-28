@@ -28,26 +28,41 @@ function xmlVal(xml, tag) {
 // Parse games from Steam Community HTML page (doesn't require auth)
 function parseGamesHtml(html) {
   const games = [];
-  // Pattern: gameListRow div for each game
-  const rowRegex = /<div[^>]*class="[^"]*gameListRow[^"]*"[^>]*id="game_(\d+)"[^>]*>([\s\S]*?)<h5>([\s\S]*?)<\/h5>/gi;
-  let match;
-  while ((match = rowRegex.exec(html)) !== null) {
-    const appid = match[1];
-    const rowHtml = match[2];
-    const hoursText = match[3].replace(/<[^>]+>/g, '').trim();
-    // Extract game name from the row
-    const nameMatch = rowHtml.match(/<div[^>]*class="[^"]*gameListRowItemName[^"]*"[^>]*>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/i);
-    const name = nameMatch ? nameMatch[1].replace(/<[^>]+>/g, '').trim() : 'Unknown Game';
-    // Parse hours: "123.4 hrs on record" or "1,234 hrs on record" or "12 min"
-    let hours = 0;
-    const hrsMatch = hoursText.match(/([\d,.]+)\s*hrs?/);
-    if (hrsMatch) {
-      hours = parseFloat(hrsMatch[1].replace(/,/g, ''));
-    } else {
-      const minMatch = hoursText.match(/([\d,.]+)\s*min/);
-      if (minMatch) hours = parseFloat(minMatch[1].replace(/,/g, '')) / 60;
+  // Split by gameListRow to find each game block
+  const blocks = html.split(/<div[^>]*class="[^"]*gameListRow[^"]*"[^>]*id="game_(\d+)"[^>]*>/gi);
+  // blocks[0] is content before first game, then pairs of [appid, content, appid, content, ...]
+  for (let i = 1; i < blocks.length; i += 2) {
+    const appid = blocks[i];
+    const content = blocks[i + 1] || '';
+    // Find the end of this game row (next game row or closing structure)
+    const rowEnd = content.search(/<div[^>]*class="[^"]*gameListRow[^"]*"/i);
+    const rowContent = rowEnd > 0 ? content.substring(0, rowEnd) : content;
+
+    // Extract game name from gameListRowItemName
+    let name = 'Unknown Game';
+    const nameFull = rowContent.match(/<div[^>]*class="[^"]*gameListRowItemName[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
+    if (nameFull) {
+      name = nameFull[1].replace(/<[^>]+>/g, '').trim();
     }
-    if (appid && name) {
+
+    // Extract hours from <h5>
+    let hours = 0;
+    const h5Match = rowContent.match(/<h5[^>]*>([\s\S]*?)<\/h5>/i);
+    if (h5Match) {
+      const hoursText = h5Match[1].replace(/<[^>]+>/g, '').trim();
+      const hrsMatch = hoursText.match(/([\d,.]+)\s*hrs?/);
+      if (hrsMatch) {
+        hours = parseFloat(hrsMatch[1].replace(/,/g, ''));
+      } else {
+        const minMatch = hoursText.match(/([\d,.]+)\s*min/);
+        if (minMatch) hours = parseFloat(minMatch[1].replace(/,/g, '')) / 60;
+      }
+    } else if (/gameListRowItemName/.test(rowContent)) {
+      // Game exists but no <h5> found, log for debug
+      console.log('No <h5> for appid', appid, 'name:', name, 'content-preview:', rowContent.substring(0, 200));
+    }
+
+    if (appid && name && name !== 'Unknown Game') {
       games.push({
         appid: parseInt(appid),
         name,
@@ -55,6 +70,8 @@ function parseGamesHtml(html) {
         playtime_hours: parseFloat(hours.toFixed(1)),
         img_icon_url: `https://media.steampowered.com/steamcommunity/public/images/apps/${appid}/${appid}_icon.jpg`,
       });
+    } else {
+      console.log('Skipped:', appid, name, 'hours:', hours);
     }
   }
   return games;
