@@ -1,4 +1,4 @@
-require('dotenv').config();
+try { require('dotenv').config(); } catch (e) { /* no .env file on deployed server */ }
 const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
@@ -278,10 +278,11 @@ app.get('/api/health', async (req, res) => {
   res.json(status);
 });
 
+process.on('uncaughtException', (err) => {
+  console.error('UNCAUGHT EXCEPTION:', err);
+});
+
 app.listen(PORT, () => {
-  console.log(`Steam Library Viewer running at http://localhost:${PORT}`);
-  if (!STEAM_API_KEY) {
-    console.log('Note: No Steam API key set. Will try Steam Community first.');
-    console.log('If blocked, get a key at https://steamcommunity.com/dev/apikey and put it in .env');
-  }
+  console.log(`Steam Library Viewer running on port ${PORT}`);
+  console.log(`API key configured: ${!!STEAM_API_KEY} (length: ${STEAM_API_KEY.length})`);
 });
