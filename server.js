@@ -233,10 +233,11 @@ async function fetchViaApi(steamId) {
 app.get('/api/games/:identifier', async (req, res) => {
   const { identifier } = req.params;
 
-  const cached = cache.get(identifier);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return res.json(cached.data);
-  }
+  // Skip cache for debugging
+  // const cached = cache.get(identifier);
+  // if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+  //   return res.json(cached.data);
+  // }
 
   const fail = (status, error, hint) => {
     res.status(status).json({ error, hint });
@@ -301,13 +302,13 @@ app.get('/api/debug/html/:identifier', async (req, res) => {
     headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
   });
   const html = await r.text();
-  // Find Limbus Company
-  const limbusIdx = html.indexOf('Limbus');
-  const limbusContext = limbusIdx > 0 ? html.substring(limbusIdx - 200, limbusIdx + 500) : 'NOT FOUND';
   res.json({
     htmlLen: html.length,
+    title: (html.match(/<title>([\s\S]*?)<\/title>/i) || [])[1] || 'no title',
     hasGameListRow: html.includes('gameListRow'),
-    limbusContext,
+    headPreview: html.substring(0, 1500),
+    has_rgGames: html.includes('rgGames'),
+    has_var: (html.match(/var\s+\w+\s*=/g) || []).slice(0, 20),
   });
 });
 
