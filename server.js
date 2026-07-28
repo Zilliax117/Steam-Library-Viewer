@@ -135,6 +135,9 @@ async function fetchViaCommunity(steamId) {
   const playedGames = games.filter(g => g.playtime_minutes > 0);
   playedGames.sort((a, b) => b.playtime_minutes - a.playtime_minutes);
 
+  // Count how many gameListRow divs are in the raw HTML
+  const rawRowCount = (gamesHtml.match(/class="[^"]*gameListRow[^"]*"/gi) || []).length;
+
   return {
     player: {
       steamid: steamId,
@@ -145,6 +148,12 @@ async function fetchViaCommunity(steamId) {
     total_games: playedGames.length,
     total_playtime_hours: parseFloat((playedGames.reduce((s, g) => s + g.playtime_minutes, 0) / 60).toFixed(1)),
     games: playedGames,
+    _debug: {
+      rawRowCount,
+      parsedCount: games.length,
+      playedCount: playedGames.length,
+      appids: playedGames.map(g => g.appid),
+    },
   };
 }
 
@@ -278,6 +287,23 @@ app.get('/api/games/:identifier', async (req, res) => {
     console.error('API fallback error:', e.message);
     return fail(500, '无法连接到 Steam，请稍后重试');
   }
+});
+
+app.get('/api/debug/html/:identifier', async (req, res) => {
+  const { identifier } = req.params;
+  let steamId = identifier;
+  if (!/^\d{17}$/.test(identifier)) {
+    steamId = await resolveViaCommunity(identifier);
+    if (!steamId) return res.status(404).json({ error: 'Cannot resolve' });
+  }
+  const r = await fetch(`https://steamcommunity.com/profiles/${steamId}/games?tab=all`, {
+    timeout: 8000,
+    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+  });
+  const html = await r.text();
+  // Extract just the game row divs
+  const rows = html.match(/<div[^>]*class="[^"]*gameListRow[^"]*"[^>]*id="game_\d+"[^>]*>/gi) || [];
+  res.json({ rowCount: rows.length, rows });
 });
 
 app.get('/api/health', async (req, res) => {
