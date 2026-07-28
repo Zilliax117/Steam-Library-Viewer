@@ -110,7 +110,10 @@ async function fetchViaCommunity(steamId) {
     fetch(`https://steamcommunity.com/profiles/${steamId}/?xml=1`, { timeout: 8000 }),
     fetch(`https://steamcommunity.com/profiles/${steamId}/games?tab=all`, {
       timeout: 8000,
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Cookie': 'birthtime=-473356801; wants_mature_content=1; lastagecheckage=1-January-1980; Steam_Language=english;',
+      },
     }),
   ]);
 
@@ -233,11 +236,10 @@ async function fetchViaApi(steamId) {
 app.get('/api/games/:identifier', async (req, res) => {
   const { identifier } = req.params;
 
-  // Skip cache for debugging
-  // const cached = cache.get(identifier);
-  // if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-  //   return res.json(cached.data);
-  // }
+  const cached = cache.get(identifier);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return res.json(cached.data);
+  }
 
   const fail = (status, error, hint) => {
     res.status(status).json({ error, hint });
@@ -299,7 +301,10 @@ app.get('/api/debug/html/:identifier', async (req, res) => {
   }
   const r = await fetch(`https://steamcommunity.com/profiles/${steamId}/games?tab=all`, {
     timeout: 8000,
-    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      'Cookie': 'birthtime=-473356801; wants_mature_content=1; lastagecheckage=1-January-1980; Steam_Language=english;',
+    },
   });
   const html = await r.text();
   res.json({
