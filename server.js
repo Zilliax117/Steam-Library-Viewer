@@ -132,13 +132,16 @@ async function fetchViaApi(steamId) {
     return { error: 'no_key' };
   }
 
+  const TIMEOUT = 15000;
+
   try {
     const [gamesRes, profileRes] = await Promise.all([
-      fetch(`https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?key=${STEAM_API_KEY}&steamid=${steamId}&include_playtime=1&include_appinfo=1`),
-      fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${STEAM_API_KEY}&steamids=${steamId}`),
+      fetch(`https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?key=${STEAM_API_KEY}&steamid=${steamId}&include_playtime=1&include_appinfo=1`, { timeout: TIMEOUT }),
+      fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${STEAM_API_KEY}&steamids=${steamId}`, { timeout: TIMEOUT }),
     ]);
 
     if (gamesRes.status === 403) return { error: 'invalid_key' };
+    if (!gamesRes.ok) return { error: `api_http_${gamesRes.status}`, detail: await gamesRes.text().catch(() => '') };
 
     const gamesData = await gamesRes.json();
     const profileData = await profileRes.json();
@@ -173,7 +176,8 @@ async function fetchViaApi(steamId) {
       games,
     };
   } catch (e) {
-    return { error: 'api_error' };
+    console.error('fetchViaApi error:', e.message);
+    return { error: 'api_error', detail: e.message };
   }
 }
 
@@ -206,9 +210,13 @@ app.get('/api/games/:identifier', async (req, res) => {
           '请确认 .env 文件中填写了有效的 API Key');
       }
       if (result.error === 'api_error') {
-        // API failed (network), fall through to community
-        console.log('Steam API unreachable, trying Community...');
-      } else if (result.error) {
+        console.log('Steam API unreachable:', result.detail);
+      }
+      if (result.error && result.error.startsWith('api_http_')) {
+        console.log('Steam API HTTP error:', result.error, result.detail);
+      }
+      if (result.error === 'api_error' || (result.error && result.error.startsWith('api_'))) {
+        // API failed, fall through to community else if (result.error) {
         return fail(404, result.error,
           '请在 Steam 隐私设置中将"游戏详情"设为公开');
       } else {
@@ -240,8 +248,8 @@ app.get('/api/games/:identifier', async (req, res) => {
 
   // All sources failed
   return fail(500,
-    '无法连接到 Steam 服务器',
-    '当前网络环境无法访问 Steam API。如部署到 Render 等海外服务器即可正常使用。');
+    '无法连接到 Steam 服务器，请稍后重试',
+    '如果问题持续，请联系站长检查服务器日志');
 });
 
 app.listen(PORT, () => {
