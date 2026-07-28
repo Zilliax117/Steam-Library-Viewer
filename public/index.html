@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Steam Library Viewer — 游戏时长展示</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Particle Canvas -->
+  <canvas id="particles"></canvas>
+
+  <!-- Noise overlay -->
+  <div class="noise-overlay"></div>
+
+  <!-- Grid background -->
+  <div class="grid-bg"></div>
+
+  <!-- Floating orbs -->
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <main class="container">
+    <!-- Hero Section -->
+    <section class="hero" id="hero">
+      <div class="logo-mark">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+          <circle cx="24" cy="24" r="22" stroke="currentColor" stroke-width="2" />
+          <path d="M16 32V16l16 8-16 8z" fill="currentColor" opacity="0.9" />
+        </svg>
+      </div>
+
+      <h1 class="hero-title">
+        <span class="title-line">探索你的</span>
+        <span class="title-line accent">游戏世界</span>
+      </h1>
+
+      <p class="hero-desc">
+        输入 Steam 好友代码或 64 位 ID，即刻查看库中所有游戏的游玩时长
+      </p>
+
+      <!-- Search Box -->
+      <div class="search-wrapper">
+        <div class="search-box">
+          <div class="search-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <circle cx="11" cy="11" r="8" />
+              <path d="M21 21l-4.35-4.35" />
+            </svg>
+          </div>
+          <input
+            type="text"
+            id="steamInput"
+            class="search-input"
+            placeholder="输入 Steam ID / 好友代码 / 自定义 URL"
+            autocomplete="off"
+          />
+          <button id="searchBtn" class="search-btn">
+            <span class="btn-text">查询</span>
+            <span class="btn-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </span>
+          </button>
+        </div>
+        <div class="search-hint">
+          支持格式：7656119XXXXXXXXXX / STEAM_0:X:XXXXXXX / 自定义URL / 好友代码
+        </div>
+      </div>
+
+      <!-- Quick examples -->
+      <div class="quick-examples">
+        <span class="example-label">示例 ID：</span>
+        <button class="example-chip" data-id="76561197960434622">示例用户 1</button>
+        <button class="example-chip" data-id="76561198840144342">示例用户 2</button>
+      </div>
+    </section>
+
+    <!-- Loading State -->
+    <section class="loading" id="loading">
+      <div class="loader">
+        <div class="loader-ring"></div>
+        <div class="loader-text">正在读取游戏库...</div>
+      </div>
+    </section>
+
+    <!-- Error State -->
+    <section class="error" id="error">
+      <div class="error-card">
+        <div class="error-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M15 9l-6 6M9 9l6 6" />
+          </svg>
+        </div>
+        <h3 class="error-title">出错了</h3>
+        <p class="error-msg" id="errorMsg"></p>
+        <p class="error-hint" id="errorHint"></p>
+        <button class="retry-btn" onclick="resetView()">重新查询</button>
+      </div>
+    </section>
+
+    <!-- Results Section -->
+    <section class="results" id="results">
+      <!-- Player Profile -->
+      <div class="profile-card" id="profileCard">
+        <div class="profile-avatar-wrap">
+          <img id="profileAvatar" class="profile-avatar" src="" alt="" />
+          <div class="avatar-glow"></div>
+        </div>
+        <div class="profile-info">
+          <h2 class="profile-name" id="profileName"></h2>
+          <a id="profileLink" class="profile-link" href="#" target="_blank">
+            查看 Steam 个人资料
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
+            </svg>
+          </a>
+        </div>
+        <div class="profile-stats">
+          <div class="stat-item">
+            <span class="stat-value" id="totalGames">0</span>
+            <span class="stat-label">款游戏</span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat-item">
+            <span class="stat-value" id="totalHours">0</span>
+            <span class="stat-label">小时</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats bar -->
+      <div class="stats-bar">
+        <div class="stats-bar-inner">
+          <span class="stats-label">按游玩时长从高到低排列</span>
+          <div class="stats-actions">
+            <button class="sort-btn active" data-sort="desc">
+              时长 ↓
+            </button>
+            <button class="sort-btn" data-sort="asc">
+              时长 ↑
+            </button>
+            <button class="sort-btn" data-sort="alpha">
+              A-Z
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Games Grid -->
+      <div class="games-list" id="gamesList"></div>
+
+      <!-- Back to top -->
+      <button class="back-top" onclick="resetView()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 15l-6-6-6 6" />
+        </svg>
+        重新查询
+      </button>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>Powered by Steam Web API &middot; 数据延迟最长 5 分钟 &middot; 仅展示公开资料</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
