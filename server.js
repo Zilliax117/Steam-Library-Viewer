@@ -181,7 +181,7 @@ async function fetchViaApi(steamId) {
   }
 }
 
-// ---- Main route: tries API first if key is set, falls back to Community ----
+// ---- Main route: Community first (most reliable from Render), API as fallback ----
 
 app.get('/api/games/:identifier', async (req, res) => {
   const { identifier } = req.params;
@@ -195,40 +195,7 @@ app.get('/api/games/:identifier', async (req, res) => {
     res.status(status).json({ error, hint });
   };
 
-  // Try Steam Web API first (faster, more reliable when key is available)
-  if (STEAM_API_KEY) {
-    try {
-      const steamId = await resolveViaApi(identifier);
-      if (!steamId) {
-        return fail(404, '无法找到该用户，请检查输入的 Steam ID');
-      }
-
-      const result = await fetchViaApi(steamId);
-      if (result.error === 'no_key' || result.error === 'invalid_key') {
-        return fail(500,
-          'Steam API Key 无效或未配置',
-          '请确认 .env 文件中填写了有效的 API Key');
-      }
-      if (result.error === 'api_error') {
-        console.log('Steam API unreachable:', result.detail);
-      }
-      if (result.error && result.error.startsWith('api_http_')) {
-        console.log('Steam API HTTP error:', result.error, result.detail);
-      }
-      if (result.error === 'api_error' || (result.error && result.error.startsWith('api_'))) {
-        // API failed, fall through to community else if (result.error) {
-        return fail(404, result.error,
-          '请在 Steam 隐私设置中将"游戏详情"设为公开');
-      } else {
-        cache.set(identifier, { data: result, timestamp: Date.now() });
-        return res.json(result);
-      }
-    } catch (e) {
-      console.log('Steam API error, trying Community...');
-    }
-  }
-
-  // Fallback: Steam Community XML (no API key needed)
+  // Primary: Steam Community XML (reachable from Render, no API key needed)
   try {
     const steamId = await resolveViaCommunity(identifier);
     if (steamId) {
@@ -241,15 +208,38 @@ app.get('/api/games/:identifier', async (req, res) => {
         return fail(404, result.error,
           '请在 Steam 隐私设置中将"游戏详情"设为公开');
       }
+    } else {
+      return fail(404, '无法找到该用户，请检查输入的 Steam ID 或自定义 URL');
     }
   } catch (e) {
-    console.log('Steam Community also unreachable');
+    console.log('Steam Community error:', e.message);
   }
 
-  // All sources failed
-  return fail(500,
-    '无法连接到 Steam 服务器，请稍后重试',
-    '如果问题持续，请联系站长检查服务器日志');
+  // Fallback: Steam Web API
+  if (!STEAM_API_KEY) {
+    return fail(500, '无法获取游戏数据，请稍后重试');
+  }
+
+  try {
+    const steamId = await resolveViaApi(identifier);
+    if (!steamId) {
+      return fail(404, '无法找到该用户，请检查输入的 Steam ID');
+    }
+
+    const result = await fetchViaApi(steamId);
+    if (!result.error) {
+      cache.set(identifier, { data: result, timestamp: Date.now() });
+      return res.json(result);
+    }
+    if (result.error.includes('私密')) {
+      return fail(404, result.error,
+        '请在 Steam 隐私设置中将"游戏详情"设为公开');
+    }
+    return fail(500, '获取数据失败，请稍后重试');
+  } catch (e) {
+    console.error('API fallback error:', e.message);
+    return fail(500, '无法连接到 Steam，请稍后重试');
+  }
 });
 
 app.get('/api/health', async (req, res) => {
