@@ -130,7 +130,6 @@ async function fetchViaCommunity(steamId) {
     games: playedGames,
   };
 }
-}
 
 // ---- Steam Web API approach (needs API key but api.steampowered.com is more reachable) ----
 
