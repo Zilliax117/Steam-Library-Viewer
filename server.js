@@ -116,7 +116,7 @@ async function resolveViaApi(input) {
   if (/^\d{17}$/.test(input)) return input;
 
   try {
-    const url = `https://api.steampowered.com/ISteamUser/ResolveVanityURL/v1/?key=${STEAM_API_KEY}&vanityurl=${encodeURIComponent(input)}`;
+    const url = `https://api.steampowered.com/ISteamUser/ResolveVanityURL/v0001/?key=${STEAM_API_KEY}&vanityurl=${encodeURIComponent(input)}&format=json`;
     const res = await fetch(url, { timeout: 5000 });
     const data = await res.json();
     if (data.response && data.response.success === 1) return data.response.steamid;
@@ -136,8 +136,8 @@ async function fetchViaApi(steamId) {
 
   try {
     const [gamesRes, profileRes] = await Promise.all([
-      fetch(`https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?key=${STEAM_API_KEY}&steamid=${steamId}&include_playtime=1&include_appinfo=1`, { timeout: TIMEOUT }),
-      fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${STEAM_API_KEY}&steamids=${steamId}`, { timeout: TIMEOUT }),
+      fetch(`https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=${STEAM_API_KEY}&steamid=${steamId}&include_playtime=1&include_appinfo=1&format=json`, { timeout: TIMEOUT }),
+      fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${STEAM_API_KEY}&steamids=${steamId}&format=json`, { timeout: TIMEOUT }),
     ]);
 
     if (gamesRes.status === 403) return { error: 'invalid_key' };
