@@ -57,7 +57,6 @@ function parseGamesHtml(html) {
       });
     }
   }
-  console.log('parseGamesHtml: parsed', games.length, 'games');
   return games;
 }
 
@@ -101,10 +100,6 @@ async function fetchViaCommunity(steamId) {
   const profileXml = await profileRes.text();
   const gamesHtml = await gamesRes.text();
 
-  console.log('Profile status:', profileRes.status);
-  console.log('Games HTML status:', gamesRes.status, 'length:', gamesHtml.length);
-  console.log('Games HTML preview:', gamesHtml.substring(0, 500));
-
   // Check if games page requires login
   if (gamesHtml.includes('<title>Sign In</title>')) {
     return { error: '游戏详情不可见，请确认 Steam 隐私设置中"游戏详情"已设为公开' };
@@ -133,12 +128,8 @@ async function fetchViaCommunity(steamId) {
     total_games: playedGames.length,
     total_playtime_hours: parseFloat((playedGames.reduce((s, g) => s + g.playtime_minutes, 0) / 60).toFixed(1)),
     games: playedGames,
-    _debug: {
-      source: 'community_html',
-      htmlLen: gamesHtml.length,
-      htmlPreview: gamesHtml.substring(0, 400),
-    },
   };
+}
 }
 
 // ---- Steam Web API approach (needs API key but api.steampowered.com is more reachable) ----
