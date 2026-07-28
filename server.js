@@ -252,6 +252,32 @@ app.get('/api/games/:identifier', async (req, res) => {
     '如果问题持续，请联系站长检查服务器日志');
 });
 
+app.get('/api/health', async (req, res) => {
+  const status = {
+    apiKeyConfigured: !!STEAM_API_KEY,
+    apiKeyLength: STEAM_API_KEY.length,
+    steamApiReachable: false,
+    steamCommunityReachable: false,
+  };
+
+  try {
+    const r = await fetch('https://api.steampowered.com/ISteamApps/GetAppList/v2/', { timeout: 8000 });
+    status.steamApiReachable = r.ok;
+  } catch (e) {
+    status.steamApiReachable = false;
+    status.steamApiError = e.message;
+  }
+
+  try {
+    const r = await fetch('https://steamcommunity.com/', { timeout: 8000 });
+    status.steamCommunityReachable = r.ok;
+  } catch (e) {
+    status.steamCommunityReachable = false;
+  }
+
+  res.json(status);
+});
+
 app.listen(PORT, () => {
   console.log(`Steam Library Viewer running at http://localhost:${PORT}`);
   if (!STEAM_API_KEY) {
