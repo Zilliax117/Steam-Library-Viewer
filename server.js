@@ -25,30 +25,39 @@ function xmlVal(xml, tag) {
   return m2 ? m2[1] : null;
 }
 
-function parseGamesXml(xml) {
+// Parse games from Steam Community HTML page (doesn't require auth)
+function parseGamesHtml(html) {
   const games = [];
-  const gameBlocks = xml.split('<game>').slice(1);
-  console.log('parseGamesXml: found', gameBlocks.length, 'game blocks');
-  for (const block of gameBlocks) {
-    const appid = xmlVal(block, 'appID');
-    const name = xmlVal(block, 'name');
-    const logo = xmlVal(block, 'logo');
-    const hoursOnRecord = parseFloat(xmlVal(block, 'hoursOnRecord') || '0');
+  // Pattern: gameListRow div for each game
+  const rowRegex = /<div[^>]*class="[^"]*gameListRow[^"]*"[^>]*id="game_(\d+)"[^>]*>([\s\S]*?)<h5>([\s\S]*?)<\/h5>/gi;
+  let match;
+  while ((match = rowRegex.exec(html)) !== null) {
+    const appid = match[1];
+    const rowHtml = match[2];
+    const hoursText = match[3].replace(/<[^>]+>/g, '').trim();
+    // Extract game name from the row
+    const nameMatch = rowHtml.match(/<div[^>]*class="[^"]*gameListRowItemName[^"]*"[^>]*>[\s\S]*?<a[^>]*>([\s\S]*?)<\/a>/i);
+    const name = nameMatch ? nameMatch[1].replace(/<[^>]+>/g, '').trim() : 'Unknown Game';
+    // Parse hours: "123.4 hrs on record" or "1,234 hrs on record" or "12 min"
+    let hours = 0;
+    const hrsMatch = hoursText.match(/([\d,.]+)\s*hrs?/);
+    if (hrsMatch) {
+      hours = parseFloat(hrsMatch[1].replace(/,/g, ''));
+    } else {
+      const minMatch = hoursText.match(/([\d,.]+)\s*min/);
+      if (minMatch) hours = parseFloat(minMatch[1].replace(/,/g, '')) / 60;
+    }
     if (appid && name) {
       games.push({
         appid: parseInt(appid),
         name,
-        playtime_minutes: Math.round(hoursOnRecord * 60),
-        playtime_hours: parseFloat(hoursOnRecord.toFixed(1)),
-        img_icon_url: logo
-          ? `https://media.steampowered.com/steamcommunity/public/images/apps/${appid}/${logo}.jpg`
-          : null,
+        playtime_minutes: Math.round(hours * 60),
+        playtime_hours: parseFloat(hours.toFixed(1)),
+        img_icon_url: `https://media.steampowered.com/steamcommunity/public/images/apps/${appid}/${appid}_icon.jpg`,
       });
-    } else {
-      console.log('Skipped game block - appid:', appid, 'name:', name);
     }
   }
-  console.log('parseGamesXml: parsed', games.length, 'games');
+  console.log('parseGamesHtml: parsed', games.length, 'games');
   return games;
 }
 
@@ -79,33 +88,40 @@ async function resolveViaCommunity(input) {
 }
 
 async function fetchViaCommunity(steamId) {
+  // Profile via XML (works without auth)
+  // Games via HTML page (works without auth for public profiles)
   const [profileRes, gamesRes] = await Promise.all([
     fetch(`https://steamcommunity.com/profiles/${steamId}/?xml=1`, { timeout: 8000 }),
-    fetch(`https://steamcommunity.com/profiles/${steamId}/games?tab=all&xml=1`, { timeout: 8000 }),
+    fetch(`https://steamcommunity.com/profiles/${steamId}/games?tab=all`, {
+      timeout: 8000,
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+    }),
   ]);
 
   const profileXml = await profileRes.text();
-  const gamesXml = await gamesRes.text();
+  const gamesHtml = await gamesRes.text();
 
-  // Debug: log response status and sample
   console.log('Profile status:', profileRes.status);
-  console.log('Games status:', gamesRes.status, 'length:', gamesXml.length);
-  console.log('Games XML preview:', gamesXml.substring(0, 500));
+  console.log('Games HTML status:', gamesRes.status, 'length:', gamesHtml.length);
+  console.log('Games HTML preview:', gamesHtml.substring(0, 500));
 
-  if (gamesXml.includes('<error>')) {
-    const errMsg = xmlVal(gamesXml, 'error') || '未知错误';
-    console.log('Games XML error:', errMsg);
-    if (errMsg.includes('not be retrieved') || errMsg.includes('private') || errMsg.includes('friends')) {
-      return { error: '该用户的游戏详情为私密，请在 Steam 隐私设置中设为公开' };
-    }
-    return { error: errMsg };
+  // Check if games page requires login
+  if (gamesHtml.includes('<title>Sign In</title>')) {
+    return { error: '游戏详情不可见，请确认 Steam 隐私设置中"游戏详情"已设为公开' };
+  }
+
+  // Check if profile is private
+  if (gamesHtml.includes('This profile is private')) {
+    return { error: '该用户的游戏详情为私密，请在 Steam 隐私设置中设为公开' };
   }
 
   const playerName = xmlVal(profileXml, 'steamID') || xmlVal(profileXml, 'playerName') || 'Unknown';
   const avatarFull = xmlVal(profileXml, 'avatarFull');
 
-  const games = parseGamesXml(gamesXml);
-  games.sort((a, b) => b.playtime_minutes - a.playtime_minutes);
+  const games = parseGamesHtml(gamesHtml);
+  // Filter out games with 0 playtime
+  const playedGames = games.filter(g => g.playtime_minutes > 0);
+  playedGames.sort((a, b) => b.playtime_minutes - a.playtime_minutes);
 
   return {
     player: {
@@ -114,13 +130,13 @@ async function fetchViaCommunity(steamId) {
       avatar: avatarFull,
       profileurl: `https://steamcommunity.com/profiles/${steamId}`,
     },
-    total_games: games.length,
-    total_playtime_hours: parseFloat((games.reduce((s, g) => s + g.playtime_minutes, 0) / 60).toFixed(1)),
-    games,
+    total_games: playedGames.length,
+    total_playtime_hours: parseFloat((playedGames.reduce((s, g) => s + g.playtime_minutes, 0) / 60).toFixed(1)),
+    games: playedGames,
     _debug: {
-      source: 'community',
-      gamesXmlLen: gamesXml.length,
-      xmlPreview: gamesXml.substring(0, 400),
+      source: 'community_html',
+      htmlLen: gamesHtml.length,
+      htmlPreview: gamesHtml.substring(0, 400),
     },
   };
 }
