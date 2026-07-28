@@ -177,7 +177,7 @@ async function fetchViaApi(steamId) {
 
   try {
     const [gamesRes, profileRes] = await Promise.all([
-      fetch(`https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=${STEAM_API_KEY}&steamid=${steamId}&include_playtime=1&include_appinfo=1&format=json`, { timeout: TIMEOUT }),
+      fetch(`https://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/?key=${STEAM_API_KEY}&steamid=${steamId}&include_playtime=1&include_appinfo=1&include_played_free_games=1&format=json`, { timeout: TIMEOUT }),
       fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key=${STEAM_API_KEY}&steamids=${steamId}&format=json`, { timeout: TIMEOUT }),
     ]);
 
