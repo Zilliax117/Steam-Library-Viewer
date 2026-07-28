@@ -320,24 +320,23 @@ app.get('/api/debug/html/:identifier', async (req, res) => {
 app.get('/api/health', async (req, res) => {
   const status = {
     apiKeyConfigured: !!STEAM_API_KEY,
-    apiKeyLength: STEAM_API_KEY.length,
-    steamApiReachable: false,
-    steamCommunityReachable: false,
+    domains: {},
   };
 
-  try {
-    const r = await fetch('https://api.steampowered.com/ISteamApps/GetAppList/v2/', { timeout: 8000 });
-    status.steamApiReachable = r.ok;
-  } catch (e) {
-    status.steamApiReachable = false;
-    status.steamApiError = e.message;
-  }
+  const testDomains = [
+    ['api.steampowered.com', 'https://api.steampowered.com/ISteamApps/GetAppList/v2/'],
+    ['partner.steam-api.com', 'https://partner.steam-api.com/ISteamApps/GetAppList/v2/'],
+    ['store.steampowered.com', 'https://store.steampowered.com/api/appdetails?appids=730'],
+    ['steamcommunity.com', 'https://steamcommunity.com/'],
+  ];
 
-  try {
-    const r = await fetch('https://steamcommunity.com/', { timeout: 8000 });
-    status.steamCommunityReachable = r.ok;
-  } catch (e) {
-    status.steamCommunityReachable = false;
+  for (const [name, url] of testDomains) {
+    try {
+      const r = await fetch(url, { timeout: 8000 });
+      status.domains[name] = { reachable: true, status: r.status };
+    } catch (e) {
+      status.domains[name] = { reachable: false, error: e.message };
+    }
   }
 
   res.json(status);
