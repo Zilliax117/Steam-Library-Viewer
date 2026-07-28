@@ -138,9 +138,6 @@ async function fetchViaCommunity(steamId) {
   const playedGames = games.filter(g => g.playtime_minutes > 0);
   playedGames.sort((a, b) => b.playtime_minutes - a.playtime_minutes);
 
-  // Count how many gameListRow divs are in the raw HTML
-  const rawRowCount = (gamesHtml.match(/class="[^"]*gameListRow[^"]*"/gi) || []).length;
-
   return {
     player: {
       steamid: steamId,
@@ -151,12 +148,6 @@ async function fetchViaCommunity(steamId) {
     total_games: playedGames.length,
     total_playtime_hours: parseFloat((playedGames.reduce((s, g) => s + g.playtime_minutes, 0) / 60).toFixed(1)),
     games: playedGames,
-    _debug: {
-      rawRowCount,
-      parsedCount: games.length,
-      playedCount: playedGames.length,
-      appids: playedGames.map(g => g.appid),
-    },
   };
 }
 
@@ -231,7 +222,7 @@ async function fetchViaApi(steamId) {
   }
 }
 
-// ---- Main route: Community first (most reliable from Render), API as fallback ----
+// ---- Main route: API first (now reachable), Community fallback ----
 
 app.get('/api/games/:identifier', async (req, res) => {
   const { identifier } = req.params;
@@ -245,7 +236,30 @@ app.get('/api/games/:identifier', async (req, res) => {
     res.status(status).json({ error, hint });
   };
 
-  // Primary: Steam Community XML (reachable from Render, no API key needed)
+  // Primary: Steam Web API (most reliable, gives full game list with names & icons)
+  if (STEAM_API_KEY) {
+    try {
+      const steamId = await resolveViaApi(identifier);
+      if (steamId) {
+        const result = await fetchViaApi(steamId);
+        if (!result.error) {
+          cache.set(identifier, { data: result, timestamp: Date.now() });
+          return res.json(result);
+        }
+        if (result.error === 'no_key' || result.error === 'invalid_key') {
+          return fail(500, 'API Key 无效', '请检查环境变量 STEAM_API_KEY');
+        }
+        if (result.error.includes('私密')) {
+          return fail(404, result.error, '请在 Steam 隐私设置中将"游戏详情"设为公开');
+        }
+        console.log('API error, falling back to Community:', result.error);
+      }
+    } catch (e) {
+      console.log('API exception, falling back to Community:', e.message);
+    }
+  }
+
+  // Fallback: Steam Community HTML
   try {
     const steamId = await resolveViaCommunity(identifier);
     if (steamId) {
@@ -255,66 +269,14 @@ app.get('/api/games/:identifier', async (req, res) => {
         return res.json(result);
       }
       if (result.error.includes('私密')) {
-        return fail(404, result.error,
-          '请在 Steam 隐私设置中将"游戏详情"设为公开');
+        return fail(404, result.error, '请在 Steam 隐私设置中将"游戏详情"设为公开');
       }
-    } else {
-      return fail(404, '无法找到该用户，请检查输入的 Steam ID 或自定义 URL');
     }
   } catch (e) {
-    console.log('Steam Community error:', e.message);
+    console.log('Community also failed:', e.message);
   }
 
-  // Fallback: Steam Web API
-  if (!STEAM_API_KEY) {
-    return fail(500, '无法获取游戏数据，请稍后重试');
-  }
-
-  try {
-    const steamId = await resolveViaApi(identifier);
-    if (!steamId) {
-      return fail(404, '无法找到该用户，请检查输入的 Steam ID');
-    }
-
-    const result = await fetchViaApi(steamId);
-    if (!result.error) {
-      cache.set(identifier, { data: result, timestamp: Date.now() });
-      return res.json(result);
-    }
-    if (result.error.includes('私密')) {
-      return fail(404, result.error,
-        '请在 Steam 隐私设置中将"游戏详情"设为公开');
-    }
-    return fail(500, '获取数据失败，请稍后重试');
-  } catch (e) {
-    console.error('API fallback error:', e.message);
-    return fail(500, '无法连接到 Steam，请稍后重试');
-  }
-});
-
-app.get('/api/debug/html/:identifier', async (req, res) => {
-  const { identifier } = req.params;
-  let steamId = identifier;
-  if (!/^\d{17}$/.test(identifier)) {
-    steamId = await resolveViaCommunity(identifier);
-    if (!steamId) return res.status(404).json({ error: 'Cannot resolve' });
-  }
-  const r = await fetch(`https://steamcommunity.com/profiles/${steamId}/games?tab=all`, {
-    timeout: 8000,
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-      'Cookie': 'birthtime=-473356801; wants_mature_content=1; lastagecheckage=1-January-1980; Steam_Language=english;',
-    },
-  });
-  const html = await r.text();
-  res.json({
-    htmlLen: html.length,
-    title: (html.match(/<title>([\s\S]*?)<\/title>/i) || [])[1] || 'no title',
-    hasGameListRow: html.includes('gameListRow'),
-    headPreview: html.substring(0, 1500),
-    has_rgGames: html.includes('rgGames'),
-    has_var: (html.match(/var\s+\w+\s*=/g) || []).slice(0, 20),
-  });
+  return fail(500, '无法获取游戏数据', '请稍后重试');
 });
 
 app.get('/api/health', async (req, res) => {
