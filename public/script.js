@@ -313,14 +313,6 @@ document.querySelector('.stats-actions').addEventListener('click', (e) => {
   sortAndRender(btn.dataset.sort);
 });
 
-// Example chips
-document.querySelectorAll('.example-chip').forEach((chip) => {
-  chip.addEventListener('click', () => {
-    steamInput.value = chip.dataset.id;
-    handleSearch();
-  });
-});
-
 // ---- Init ----
 initParticles();
 

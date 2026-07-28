@@ -40,7 +40,7 @@
       </h1>
 
       <p class="hero-desc">
-        输入 Steam 好友代码或 64 位 ID，即刻查看库中所有游戏的游玩时长
+        输入 Steam ID，即刻查看库中所有游戏的游玩时长
       </p>
 
       <!-- Search Box -->
@@ -56,7 +56,7 @@
             type="text"
             id="steamInput"
             class="search-input"
-            placeholder="输入 Steam ID / 好友代码 / 自定义 URL"
+            placeholder="输入 Steam ID 或自定义 URL"
             autocomplete="off"
           />
           <button id="searchBtn" class="search-btn">
@@ -69,16 +69,10 @@
           </button>
         </div>
         <div class="search-hint">
-          支持格式：7656119XXXXXXXXXX / STEAM_0:X:XXXXXXX / 自定义URL / 好友代码
+          支持 17 位 Steam ID 或自定义 URL 名称
         </div>
       </div>
 
-      <!-- Quick examples -->
-      <div class="quick-examples">
-        <span class="example-label">示例 ID：</span>
-        <button class="example-chip" data-id="76561197960434622">示例用户 1</button>
-        <button class="example-chip" data-id="76561198840144342">示例用户 2</button>
-      </div>
     </section>
 
     <!-- Loading State -->

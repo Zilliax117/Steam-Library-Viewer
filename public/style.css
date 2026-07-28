@@ -321,40 +321,6 @@ body {
   text-align: center;
 }
 
-/* Quick examples */
-.quick-examples {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 16px;
-}
-
-.example-label {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
-.example-chip {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  color: var(--text-secondary);
-  padding: 6px 14px;
-  border-radius: 100px;
-  font-size: 0.78rem;
-  font-family: 'JetBrains Mono', monospace;
-  cursor: pointer;
-  transition: all var(--transition);
-  backdrop-filter: blur(10px);
-}
-
-.example-chip:hover {
-  border-color: var(--border-glow);
-  color: var(--accent);
-  background: rgba(26, 159, 255, 0.08);
-}
-
 /* ============================================
    Loading State
    ============================================ */
