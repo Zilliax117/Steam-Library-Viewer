@@ -64,6 +64,46 @@ const i18n = {
     backTop: '新しい検索',
     footer: 'Powered by Steam Web API · データは最大5分遅延 · 公開プロフィールのみ',
   },
+  ko: {
+    pageTitle: 'Steam Library Viewer — 플레이타임 쇼케이스',
+    heroLine1: '당신의',
+    heroLine2: '게임 세계를 탐험하세요',
+    heroDesc: 'Steam ID를 입력하면 라이브러리의 모든 게임 플레이 시간을 확인할 수 있습니다',
+    searchPlaceholder: 'Steam ID 또는 사용자 정의 URL 입력',
+    searchHint: '17자리 Steam ID 또는 사용자 정의 URL 이름 지원',
+    searchBtn: '검색',
+    loading: '게임 라이브러리 로딩 중...',
+    errorTitle: '오류 발생',
+    retryBtn: '다시 시도',
+    viewProfile: 'Steam 프로필 보기',
+    statGames: '게임',
+    statHours: '시간',
+    statsLabel: '플레이 시간 순 (높은 순)',
+    sortDesc: '시간 ↓',
+    sortAsc: '시간 ↑',
+    backTop: '새 검색',
+    footer: 'Powered by Steam Web API · 최대 5분 지연 가능 · 공개 프로필만 표시',
+  },
+  ru: {
+    pageTitle: 'Steam Library Viewer — Демонстрация времени в игре',
+    heroLine1: 'Исследуйте',
+    heroLine2: 'Свой игровой мир',
+    heroDesc: 'Введите Steam ID, чтобы увидеть время во всех играх вашей библиотеки',
+    searchPlaceholder: 'Введите Steam ID или пользовательский URL',
+    searchHint: 'Поддерживает 17-значный Steam ID или имя пользовательского URL',
+    searchBtn: 'Поиск',
+    loading: 'Загрузка библиотеки игр...',
+    errorTitle: 'Произошла ошибка',
+    retryBtn: 'Попробовать снова',
+    viewProfile: 'Посмотреть профиль Steam',
+    statGames: 'игр',
+    statHours: 'часов',
+    statsLabel: 'Сортировка по времени игры (по убыванию)',
+    sortDesc: 'Часы ↓',
+    sortAsc: 'Часы ↑',
+    backTop: 'Новый поиск',
+    footer: 'Powered by Steam Web API · Задержка до 5 минут · Только открытые профили',
+  },
 };
 
 let currentLang = localStorage.getItem('lang') || 'zh';
@@ -88,12 +128,12 @@ function applyTranslations(lang) {
 
   // Page title & html lang
   if (t.pageTitle) document.title = t.pageTitle;
-  document.documentElement.lang = lang === 'en' ? 'en' : lang === 'ja' ? 'ja' : 'zh-CN';
+  const langMap = { zh: 'zh-CN', en: 'en', ja: 'ja', ko: 'ko', ru: 'ru' };
+  document.documentElement.lang = langMap[lang] || 'zh-CN';
 
-  // Update lang buttons
-  document.querySelectorAll('.lang-btn').forEach((btn) => {
-    btn.classList.toggle('active', btn.dataset.lang === lang);
-  });
+  // Update lang select
+  const langSelect = document.getElementById('langSelect');
+  if (langSelect) langSelect.value = lang;
 
   // Re-render games if results are visible (updates playtime formatting)
   if (resultsSection.classList.contains('active') && currentGames.length > 0) {
@@ -225,25 +265,26 @@ function formatHours(hours) {
 }
 
 function formatMinutes(minutes) {
-  if (currentLang === 'en') {
-    if (minutes < 60) return `${minutes} min`;
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
-    if (h < 100) return `${h}h ${m}m`;
-    return `${h}h`;
-  }
-  if (currentLang === 'ja') {
-    if (minutes < 60) return `${minutes}分`;
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
-    if (h < 100) return `${h}時間${m}分`;
-    return `${h}時間`;
-  }
-  if (minutes < 60) return `${minutes} 分钟`;
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
-  if (h < 100) return `${h}h ${m}m`;
-  return `${h}h`;
+  const compact = h >= 100;
+  switch (currentLang) {
+    case 'en':
+      if (minutes < 60) return `${minutes} min`;
+      return compact ? `${h}h` : `${h}h ${m}m`;
+    case 'ja':
+      if (minutes < 60) return `${minutes}分`;
+      return compact ? `${h}時間` : `${h}時間${m}分`;
+    case 'ko':
+      if (minutes < 60) return `${minutes}분`;
+      return compact ? `${h}시간` : `${h}시간 ${m}분`;
+    case 'ru':
+      if (minutes < 60) return `${minutes} мин`;
+      return compact ? `${h}ч` : `${h}ч ${m}м`;
+    default:
+      if (minutes < 60) return `${minutes} 分钟`;
+      return compact ? `${h}h` : `${h}h ${m}m`;
+  }
 }
 
 // ---- API Call ----
@@ -328,7 +369,7 @@ function sortAndRender(sortType) {
           </div>
           <div class="game-hours">
             <span class="hours-value">${formatHours(game.playtime_hours)}</span>
-            <span class="hours-unit">${{ en: 'hrs', ja: '時間', zh: '小时' }[currentLang] || '小时'}</span>
+            <span class="hours-unit">${{ en: 'hrs', ja: '時間', ko: '시간', ru: 'ч', zh: '小时' }[currentLang] || '小时'}</span>
           </div>
         </div>
       `;
@@ -405,33 +446,18 @@ async function handleSearch() {
   } catch (err) {
     let hint = '';
     const msg = err.message;
-    if (currentLang === 'en') {
-      if (msg.includes('私密') || msg.includes('private') || msg.includes('not visible')) {
-        hint = 'Go to Steam client: Profile → Edit Profile → Privacy Settings → Set "Game details" to Public';
-      } else if (msg.includes('无法找到') || msg.includes('not found')) {
-        hint = 'Try using the full Steam profile URL or a 17-digit Steam ID';
-      } else if (msg.includes('服务器') || msg.includes('server') || msg.includes('后端')) {
-        hint = 'Please check that the backend server is running';
-      } else {
-        hint = 'Please try again later';
-      }
-    } else if (currentLang === 'ja') {
-      if (msg.includes('私密') || msg.includes('private') || msg.includes('not visible')) {
-        hint = 'Steamクライアント: プロフィール → プロフィール編集 → プライバシー設定 → 「ゲーム詳細」を公開に設定';
-      } else if (msg.includes('无法找到') || msg.includes('not found')) {
-        hint = 'Steamプロフィールの完全なURLまたは17桁のSteam IDをお試しください';
-      } else if (msg.includes('服务器') || msg.includes('server') || msg.includes('后端')) {
-        hint = 'バックエンドサーバーが起動しているか確認してください';
-      } else {
-        hint = 'しばらくしてからもう一度お試しください';
-      }
-    } else {
-      if (msg.includes('私密')) {
-        hint = '请在 Steam 客户端中：个人资料 → 编辑个人资料 → 隐私设置 → 游戏详情设为"公开"';
-      } else if (msg.includes('无法找到')) {
-        hint = '尝试使用 Steam 个人资料页面的完整 URL 或 17 位 Steam ID';
-      }
-    }
+    const hintKey = msg.includes('私密') || msg.includes('private') || msg.includes('not visible')
+      ? 'privacy' : msg.includes('无法找到') || msg.includes('not found')
+      ? 'notFound' : msg.includes('服务器') || msg.includes('server') || msg.includes('后端')
+      ? 'server' : 'generic';
+    const errorHints = {
+      zh: { privacy: '请在 Steam 客户端中：个人资料 → 编辑个人资料 → 隐私设置 → 游戏详情设为"公开"', notFound: '尝试使用 Steam 个人资料页面的完整 URL 或 17 位 Steam ID', server: '', generic: '' },
+      en: { privacy: 'Go to Steam client: Profile → Edit Profile → Privacy Settings → Set "Game details" to Public', notFound: 'Try using the full Steam profile URL or a 17-digit Steam ID', server: 'Please check that the backend server is running', generic: 'Please try again later' },
+      ja: { privacy: 'Steamクライアント: プロフィール → プロフィール編集 → プライバシー設定 → 「ゲーム詳細」を公開に設定', notFound: 'Steamプロフィールの完全なURLまたは17桁のSteam IDをお試しください', server: 'バックエンドサーバーが起動しているか確認してください', generic: 'しばらくしてからもう一度お試しください' },
+      ko: { privacy: 'Steam 클라이언트: 프로필 → 프로필 편집 → 개인정보 설정 → "게임 세부정보"를 공개로 설정', notFound: '전체 Steam 프로필 URL 또는 17자리 Steam ID를 사용해 보세요', server: '백엔드 서버가 실행 중인지 확인하세요', generic: '잠시 후 다시 시도해 주세요' },
+      ru: { privacy: 'Откройте клиент Steam: Профиль → Редактировать профиль → Настройки приватности → "Детали игры" сделать общедоступными', notFound: 'Попробуйте использовать полный URL профиля Steam или 17-значный Steam ID', server: 'Проверьте, запущен ли сервер', generic: 'Пожалуйста, попробуйте позже' },
+    };
+    hint = (errorHints[currentLang] || errorHints.zh)[hintKey] || '';
     showError(err.message, hint);
   }
 }
@@ -450,10 +476,8 @@ document.querySelector('.stats-actions').addEventListener('click', (e) => {
 });
 
 // Language toggle
-document.querySelector('.lang-toggle-wrap').addEventListener('click', (e) => {
-  const btn = e.target.closest('.lang-btn');
-  if (!btn) return;
-  applyTranslations(btn.dataset.lang);
+document.getElementById('langSelect').addEventListener('change', function () {
+  applyTranslations(this.value);
 });
 
 // ---- Init ----
