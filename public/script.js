@@ -44,6 +44,26 @@ const i18n = {
     backTop: 'New Search',
     footer: 'Powered by Steam Web API · Data may be delayed up to 5 min · Public profiles only',
   },
+  ja: {
+    pageTitle: 'Steam Library Viewer — プレイ時間ショーケース',
+    heroLine1: 'あなたの',
+    heroLine2: 'ゲームの世界を探索',
+    heroDesc: 'Steam IDを入力すると、ライブラリ内の全ゲームのプレイ時間を表示します',
+    searchPlaceholder: 'Steam IDまたはカスタムURLを入力',
+    searchHint: '17桁のSteam IDまたはカスタムURL名に対応',
+    searchBtn: '検索',
+    loading: 'ゲームライブラリを読み込み中...',
+    errorTitle: 'エラーが発生しました',
+    retryBtn: '再試行',
+    viewProfile: 'Steamプロフィールを表示',
+    statGames: 'ゲーム',
+    statHours: '時間',
+    statsLabel: 'プレイ時間順（高い順）',
+    sortDesc: '時間 ↓',
+    sortAsc: '時間 ↑',
+    backTop: '新しい検索',
+    footer: 'Powered by Steam Web API · データは最大5分遅延 · 公開プロフィールのみ',
+  },
 };
 
 let currentLang = localStorage.getItem('lang') || 'zh';
@@ -68,7 +88,7 @@ function applyTranslations(lang) {
 
   // Page title & html lang
   if (t.pageTitle) document.title = t.pageTitle;
-  document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN';
+  document.documentElement.lang = lang === 'en' ? 'en' : lang === 'ja' ? 'ja' : 'zh-CN';
 
   // Update lang buttons
   document.querySelectorAll('.lang-btn').forEach((btn) => {
@@ -212,6 +232,13 @@ function formatMinutes(minutes) {
     if (h < 100) return `${h}h ${m}m`;
     return `${h}h`;
   }
+  if (currentLang === 'ja') {
+    if (minutes < 60) return `${minutes}分`;
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    if (h < 100) return `${h}時間${m}分`;
+    return `${h}時間`;
+  }
   if (minutes < 60) return `${minutes} 分钟`;
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
@@ -301,7 +328,7 @@ function sortAndRender(sortType) {
           </div>
           <div class="game-hours">
             <span class="hours-value">${formatHours(game.playtime_hours)}</span>
-            <span class="hours-unit">${currentLang === 'en' ? 'hrs' : '小时'}</span>
+            <span class="hours-unit">${{ en: 'hrs', ja: '時間', zh: '小时' }[currentLang] || '小时'}</span>
           </div>
         </div>
       `;
@@ -387,6 +414,16 @@ async function handleSearch() {
         hint = 'Please check that the backend server is running';
       } else {
         hint = 'Please try again later';
+      }
+    } else if (currentLang === 'ja') {
+      if (msg.includes('私密') || msg.includes('private') || msg.includes('not visible')) {
+        hint = 'Steamクライアント: プロフィール → プロフィール編集 → プライバシー設定 → 「ゲーム詳細」を公開に設定';
+      } else if (msg.includes('无法找到') || msg.includes('not found')) {
+        hint = 'Steamプロフィールの完全なURLまたは17桁のSteam IDをお試しください';
+      } else if (msg.includes('服务器') || msg.includes('server') || msg.includes('后端')) {
+        hint = 'バックエンドサーバーが起動しているか確認してください';
+      } else {
+        hint = 'しばらくしてからもう一度お試しください';
       }
     } else {
       if (msg.includes('私密')) {
