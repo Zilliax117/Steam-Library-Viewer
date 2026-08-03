@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Steam Library Viewer — 游戏时长展示</title>
+  <title data-i18n="pageTitle">Steam Library Viewer — 游戏时长展示</title>
   <link rel="icon" type="image/png" sizes="64x64" href="favicon.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -33,11 +33,11 @@
       </div>
 
       <h1 class="hero-title">
-        <span class="title-line">探索你的</span>
-        <span class="title-line accent">游戏世界</span>
+        <span class="title-line" data-i18n="heroLine1">探索你的</span>
+        <span class="title-line accent" data-i18n="heroLine2">游戏世界</span>
       </h1>
 
-      <p class="hero-desc">
+      <p class="hero-desc" data-i18n="heroDesc">
         输入 Steam ID，即刻查看库中所有游戏的游玩时长
       </p>
 
@@ -54,11 +54,12 @@
             type="text"
             id="steamInput"
             class="search-input"
+            data-i18n-placeholder="searchPlaceholder"
             placeholder="输入 Steam ID 或自定义 URL"
             autocomplete="off"
           />
           <button id="searchBtn" class="search-btn">
-            <span class="btn-text">查询</span>
+            <span class="btn-text" data-i18n="searchBtn">查询</span>
             <span class="btn-icon">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
                 <path d="M5 12h14M12 5l7 7-7 7" />
@@ -66,8 +67,12 @@
             </span>
           </button>
         </div>
-        <div class="search-hint">
+        <div class="search-hint" data-i18n="searchHint">
           支持 17 位 Steam ID 或自定义 URL 名称
+        </div>
+        <div class="lang-toggle-wrap">
+          <button class="lang-btn active" data-lang="zh" title="中文">中</button>
+          <button class="lang-btn" data-lang="en" title="English">EN</button>
         </div>
       </div>
 
@@ -77,7 +82,7 @@
     <section class="loading" id="loading">
       <div class="loader">
         <div class="loader-ring"></div>
-        <div class="loader-text">正在读取游戏库...</div>
+        <div class="loader-text" data-i18n="loading">正在读取游戏库...</div>
       </div>
     </section>
 
@@ -90,10 +95,10 @@
             <path d="M15 9l-6 6M9 9l6 6" />
           </svg>
         </div>
-        <h3 class="error-title">出错了</h3>
+        <h3 class="error-title" data-i18n="errorTitle">出错了</h3>
         <p class="error-msg" id="errorMsg"></p>
         <p class="error-hint" id="errorHint"></p>
-        <button class="retry-btn" onclick="resetView()">重新查询</button>
+        <button class="retry-btn" onclick="resetView()" data-i18n="retryBtn">重新查询</button>
       </div>
     </section>
 
@@ -107,7 +112,7 @@
         </div>
         <div class="profile-info">
           <h2 class="profile-name" id="profileName"></h2>
-          <a id="profileLink" class="profile-link" href="#" target="_blank">
+          <a id="profileLink" class="profile-link" href="#" target="_blank" data-i18n="viewProfile">
             查看 Steam 个人资料
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" />
@@ -117,12 +122,12 @@
         <div class="profile-stats">
           <div class="stat-item">
             <span class="stat-value" id="totalGames">0</span>
-            <span class="stat-label">款游戏</span>
+            <span class="stat-label" data-i18n="statGames">款游戏</span>
           </div>
           <div class="stat-divider"></div>
           <div class="stat-item">
             <span class="stat-value" id="totalHours">0</span>
-            <span class="stat-label">小时</span>
+            <span class="stat-label" data-i18n="statHours">小时</span>
           </div>
         </div>
       </div>
@@ -130,12 +135,12 @@
       <!-- Stats bar -->
       <div class="stats-bar">
         <div class="stats-bar-inner">
-          <span class="stats-label">按游玩时长从高到低排列</span>
+          <span class="stats-label" data-i18n="statsLabel">按游玩时长从高到低排列</span>
           <div class="stats-actions">
-            <button class="sort-btn active" data-sort="desc">
+            <button class="sort-btn active" data-sort="desc" data-i18n="sortDesc">
               时长 ↓
             </button>
-            <button class="sort-btn" data-sort="asc">
+            <button class="sort-btn" data-sort="asc" data-i18n="sortAsc">
               时长 ↑
             </button>
             <button class="sort-btn" data-sort="alpha">
@@ -153,13 +158,13 @@
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M18 15l-6-6-6 6" />
         </svg>
-        重新查询
+        <span data-i18n="backTop">重新查询</span>
       </button>
     </section>
   </main>
 
   <footer class="footer">
-    <p>Powered by Steam Web API &middot; 数据延迟最长 5 分钟 &middot; 仅展示公开资料</p>
+    <p data-i18n="footer">Powered by Steam Web API &middot; 数据延迟最长 5 分钟 &middot; 仅展示公开资料</p>
   </footer>
 
   <script src="script.js"></script>

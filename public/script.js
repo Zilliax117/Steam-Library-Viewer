@@ -2,6 +2,85 @@
 // Steam Library Viewer — Interactive Scripts
 // ============================================
 
+// ---- i18n ----
+const i18n = {
+  zh: {
+    pageTitle: 'Steam Library Viewer — 游戏时长展示',
+    heroLine1: '探索你的',
+    heroLine2: '游戏世界',
+    heroDesc: '输入 Steam ID，即刻查看库中所有游戏的游玩时长',
+    searchPlaceholder: '输入 Steam ID 或自定义 URL',
+    searchHint: '支持 17 位 Steam ID 或自定义 URL 名称',
+    searchBtn: '查询',
+    loading: '正在读取游戏库...',
+    errorTitle: '出错了',
+    retryBtn: '重新查询',
+    viewProfile: '查看 Steam 个人资料',
+    statGames: '款游戏',
+    statHours: '小时',
+    statsLabel: '按游玩时长从高到低排列',
+    sortDesc: '时长 ↓',
+    sortAsc: '时长 ↑',
+    backTop: '重新查询',
+    footer: 'Powered by Steam Web API · 数据延迟最长 5 分钟 · 仅展示公开资料',
+  },
+  en: {
+    pageTitle: 'Steam Library Viewer — Playtime Showcase',
+    heroLine1: 'Explore Your',
+    heroLine2: 'Gaming World',
+    heroDesc: 'Enter a Steam ID to view playtime for all games in your library',
+    searchPlaceholder: 'Enter Steam ID or custom URL',
+    searchHint: 'Supports 17-digit Steam ID or custom URL name',
+    searchBtn: 'Search',
+    loading: 'Loading game library...',
+    errorTitle: 'Something went wrong',
+    retryBtn: 'Try Again',
+    viewProfile: 'View Steam Profile',
+    statGames: 'games',
+    statHours: 'hours',
+    statsLabel: 'Sorted by playtime (high to low)',
+    sortDesc: 'Hours ↓',
+    sortAsc: 'Hours ↑',
+    backTop: 'New Search',
+    footer: 'Powered by Steam Web API · Data may be delayed up to 5 min · Public profiles only',
+  },
+};
+
+let currentLang = localStorage.getItem('lang') || 'zh';
+
+function applyTranslations(lang) {
+  currentLang = lang;
+  localStorage.setItem('lang', lang);
+
+  const t = i18n[lang];
+
+  // Elements with data-i18n
+  document.querySelectorAll('[data-i18n]').forEach((el) => {
+    const key = el.dataset.i18n;
+    if (t[key]) el.textContent = t[key];
+  });
+
+  // Placeholders
+  const placeholderEl = document.querySelector('[data-i18n-placeholder]');
+  if (placeholderEl && t[placeholderEl.dataset.i18nPlaceholder]) {
+    placeholderEl.placeholder = t[placeholderEl.dataset.i18nPlaceholder];
+  }
+
+  // Page title & html lang
+  if (t.pageTitle) document.title = t.pageTitle;
+  document.documentElement.lang = lang === 'en' ? 'en' : 'zh-CN';
+
+  // Update lang buttons
+  document.querySelectorAll('.lang-btn').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.lang === lang);
+  });
+
+  // Re-render games if results are visible (updates playtime formatting)
+  if (resultsSection.classList.contains('active') && currentGames.length > 0) {
+    sortAndRender(currentSort);
+  }
+}
+
 // ---- DOM Elements ----
 const steamInput = document.getElementById('steamInput');
 const searchBtn = document.getElementById('searchBtn');
@@ -126,6 +205,13 @@ function formatHours(hours) {
 }
 
 function formatMinutes(minutes) {
+  if (currentLang === 'en') {
+    if (minutes < 60) return `${minutes} min`;
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    if (h < 100) return `${h}h ${m}m`;
+    return `${h}h`;
+  }
   if (minutes < 60) return `${minutes} 分钟`;
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
@@ -215,7 +301,7 @@ function sortAndRender(sortType) {
           </div>
           <div class="game-hours">
             <span class="hours-value">${formatHours(game.playtime_hours)}</span>
-            <span class="hours-unit">小时</span>
+            <span class="hours-unit">${currentLang === 'en' ? 'hrs' : '小时'}</span>
           </div>
         </div>
       `;
@@ -291,10 +377,23 @@ async function handleSearch() {
     showResults(data);
   } catch (err) {
     let hint = '';
-    if (err.message.includes('私密')) {
-      hint = '请在 Steam 客户端中：个人资料 → 编辑个人资料 → 隐私设置 → 游戏详情设为"公开"';
-    } else if (err.message.includes('无法找到')) {
-      hint = '尝试使用 Steam 个人资料页面的完整 URL 或 17 位 Steam ID';
+    const msg = err.message;
+    if (currentLang === 'en') {
+      if (msg.includes('私密') || msg.includes('private') || msg.includes('not visible')) {
+        hint = 'Go to Steam client: Profile → Edit Profile → Privacy Settings → Set "Game details" to Public';
+      } else if (msg.includes('无法找到') || msg.includes('not found')) {
+        hint = 'Try using the full Steam profile URL or a 17-digit Steam ID';
+      } else if (msg.includes('服务器') || msg.includes('server') || msg.includes('后端')) {
+        hint = 'Please check that the backend server is running';
+      } else {
+        hint = 'Please try again later';
+      }
+    } else {
+      if (msg.includes('私密')) {
+        hint = '请在 Steam 客户端中：个人资料 → 编辑个人资料 → 隐私设置 → 游戏详情设为"公开"';
+      } else if (msg.includes('无法找到')) {
+        hint = '尝试使用 Steam 个人资料页面的完整 URL 或 17 位 Steam ID';
+      }
     }
     showError(err.message, hint);
   }
@@ -313,8 +412,16 @@ document.querySelector('.stats-actions').addEventListener('click', (e) => {
   sortAndRender(btn.dataset.sort);
 });
 
+// Language toggle
+document.querySelector('.lang-toggle-wrap').addEventListener('click', (e) => {
+  const btn = e.target.closest('.lang-btn');
+  if (!btn) return;
+  applyTranslations(btn.dataset.lang);
+});
+
 // ---- Init ----
 initParticles();
+applyTranslations(currentLang);
 
 // Focus input on load
 setTimeout(() => steamInput.focus(), 500);
