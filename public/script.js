@@ -84,6 +84,26 @@ const i18n = {
     backTop: '새 검색',
     footer: 'Powered by Steam Web API · 최대 5분 지연 가능 · 공개 프로필만 표시',
   },
+  fr: {
+    pageTitle: 'Steam Library Viewer — Affichage du temps de jeu',
+    heroLine1: 'Explorez votre',
+    heroLine2: 'Monde de jeu',
+    heroDesc: 'Entrez un Steam ID pour voir le temps de jeu de tous les jeux de votre bibliothèque',
+    searchPlaceholder: 'Entrez un Steam ID ou une URL personnalisée',
+    searchHint: 'Prend en charge l\'ID Steam à 17 chiffres ou le nom d\'URL personnalisé',
+    searchBtn: 'Rechercher',
+    loading: 'Chargement de la bibliothèque...',
+    errorTitle: 'Une erreur est survenue',
+    retryBtn: 'Réessayer',
+    viewProfile: 'Voir le profil Steam',
+    statGames: 'jeux',
+    statHours: 'heures',
+    statsLabel: 'Trié par temps de jeu (décroissant)',
+    sortDesc: 'Heures ↓',
+    sortAsc: 'Heures ↑',
+    backTop: 'Nouvelle recherche',
+    footer: 'Powered by Steam Web API · Délai jusqu\'à 5 minutes · Profils publics uniquement',
+  },
   ru: {
     pageTitle: 'Steam Library Viewer — Демонстрация времени в игре',
     heroLine1: 'Исследуйте',
@@ -128,7 +148,7 @@ function applyTranslations(lang) {
 
   // Page title & html lang
   if (t.pageTitle) document.title = t.pageTitle;
-  const langMap = { zh: 'zh-CN', en: 'en', ja: 'ja', ko: 'ko', ru: 'ru' };
+  const langMap = { zh: 'zh-CN', en: 'en', ja: 'ja', ko: 'ko', fr: 'fr', ru: 'ru' };
   document.documentElement.lang = langMap[lang] || 'zh-CN';
 
   // Update lang select
@@ -278,6 +298,9 @@ function formatMinutes(minutes) {
     case 'ko':
       if (minutes < 60) return `${minutes}분`;
       return compact ? `${h}시간` : `${h}시간 ${m}분`;
+    case 'fr':
+      if (minutes < 60) return `${minutes} min`;
+      return compact ? `${h}h` : `${h}h ${m}min`;
     case 'ru':
       if (minutes < 60) return `${minutes} мин`;
       return compact ? `${h}ч` : `${h}ч ${m}м`;
@@ -369,7 +392,7 @@ function sortAndRender(sortType) {
           </div>
           <div class="game-hours">
             <span class="hours-value">${formatHours(game.playtime_hours)}</span>
-            <span class="hours-unit">${{ en: 'hrs', ja: '時間', ko: '시간', ru: 'ч', zh: '小时' }[currentLang] || '小时'}</span>
+            <span class="hours-unit">${{ en: 'hrs', ja: '時間', ko: '시간', fr: 'h', ru: 'ч', zh: '小时' }[currentLang] || '小时'}</span>
           </div>
         </div>
       `;
@@ -455,6 +478,7 @@ async function handleSearch() {
       en: { privacy: 'Go to Steam client: Profile → Edit Profile → Privacy Settings → Set "Game details" to Public', notFound: 'Try using the full Steam profile URL or a 17-digit Steam ID', server: 'Please check that the backend server is running', generic: 'Please try again later' },
       ja: { privacy: 'Steamクライアント: プロフィール → プロフィール編集 → プライバシー設定 → 「ゲーム詳細」を公開に設定', notFound: 'Steamプロフィールの完全なURLまたは17桁のSteam IDをお試しください', server: 'バックエンドサーバーが起動しているか確認してください', generic: 'しばらくしてからもう一度お試しください' },
       ko: { privacy: 'Steam 클라이언트: 프로필 → 프로필 편집 → 개인정보 설정 → "게임 세부정보"를 공개로 설정', notFound: '전체 Steam 프로필 URL 또는 17자리 Steam ID를 사용해 보세요', server: '백엔드 서버가 실행 중인지 확인하세요', generic: '잠시 후 다시 시도해 주세요' },
+      fr: { privacy: 'Client Steam : Profil → Modifier le profil → Paramètres de confidentialité → Définir "Détails du jeu" sur Public', notFound: 'Essayez d\'utiliser l\'URL complète du profil Steam ou un Steam ID à 17 chiffres', server: 'Vérifiez que le serveur backend est en cours d\'exécution', generic: 'Veuillez réessayer plus tard' },
       ru: { privacy: 'Откройте клиент Steam: Профиль → Редактировать профиль → Настройки приватности → "Детали игры" сделать общедоступными', notFound: 'Попробуйте использовать полный URL профиля Steam или 17-значный Steam ID', server: 'Проверьте, запущен ли сервер', generic: 'Пожалуйста, попробуйте позже' },
     };
     hint = (errorHints[currentLang] || errorHints.zh)[hintKey] || '';
